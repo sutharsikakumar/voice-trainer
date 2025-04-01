@@ -1,107 +1,116 @@
 "use client";
-import { useState } from "react";
-import { createClient } from "@supabase/supabase-js";
+import { useState, useEffect } from "react";
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import styles from "./hero.module.css";
 
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
-
 export default function Home() {
+  const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [recording, setRecording] = useState<boolean>(false);
+  const [recording, setRecording] = useState(false);
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
+  useEffect(() => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (supabaseUrl && supabaseKey) {
+      setSupabase(createClient(supabaseUrl, supabaseKey));
+    }
+  }, []);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
-    if (selectedFile && selectedFile.type === "audio/mpeg") {
-      setFile(selectedFile);
-    } else {
-      alert("Please upload an MP3 file.");
-    }
+    selectedFile?.type.startsWith("audio") ? setFile(selectedFile) : alert("Please upload a valid audio file.");
   };
 
-
   const handleUpload = async () => {
-    if (!file) return;
+    if (!file || !supabase) return;
     setUploading(true);
+    setUploadError(null);
 
     const fileName = `${Date.now()}-${file.name}`;
     const { error } = await supabase.storage
       .from("audio-recordings")
-      .upload(fileName, file, { cacheControl: "3600", upsert: false });
+      .upload(fileName, file, { cacheControl: "3600", upsert: false })
+      .catch((err) => {
+        setUploadError(err.message);
+        throw err;
+      });
 
-    if (error) {
-      console.error("Error uploading file:", error);
-    } else {
-      console.log("File uploaded successfully");
-    }
-
+    error ? setUploadError(error.message) : setFile(null);
     setUploading(false);
   };
 
   const startRecording = async () => {
-    setRecording(true);
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const recorder = new MediaRecorder(stream);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      let chunks: Blob[] = [];
 
-    recorder.ondataavailable = (event) => {
-      const audioData = event.data;
-      setAudioBlob(audioData);
-    };
+      recorder.ondataavailable = (event) => event.data.size > 0 && chunks.push(event.data);
+      recorder.onstop = () => {
+        setAudioBlob(new Blob(chunks, { type: "audio/webm" }));
+        stream.getTracks().forEach((track) => track.stop());
+      };
 
-    recorder.onstop = () => {
-      setRecording(false);
-    };
-
-    recorder.start();
-    setMediaRecorder(recorder);
+      recorder.start(200);
+      setRecording(true);
+      setMediaRecorder(recorder);
+    } catch (error) {
+      console.error("Error starting recording:", error);
+      setUploadError("Microphone access required for recording");
+    }
   };
 
   const stopRecording = () => {
-    if (mediaRecorder) {
-      mediaRecorder.stop();
-    }
+    mediaRecorder?.stop();
+    setRecording(false);
   };
 
   const uploadRecordedAudio = async () => {
-    if (!audioBlob) return;
+    if (!audioBlob || !supabase) return;
+    setUploading(true);
+    setUploadError(null);
 
-    const fileName = `${Date.now()}-recorded-audio.wav`;
+    const file = new File([audioBlob], "recorded-audio.webm", { type: "audio/webm" });
+    const fileName = `${Date.now()}-recorded-audio.webm`;
+
     const { error } = await supabase.storage
       .from("audio-recordings")
-      .upload(fileName, audioBlob, { cacheControl: "3600", upsert: false });
+      .upload(fileName, file, { cacheControl: "3600", upsert: false })
+      .catch((err) => {
+        setUploadError(err.message);
+        throw err;
+      });
 
-    if (error) {
-      console.error("Error uploading recorded audio:", error);
-    } else {
-      console.log("Recorded audio uploaded successfully");
-    }
+    error ? setUploadError(error.message) : setAudioBlob(null);
+    setUploading(false);
   };
 
   return (
     <div className={styles.container}>
       <h1 className={styles.title}>Speech Trainer</h1>
-      <div className="flex flex-row gap-12">
-        <div className={styles.uploadBox}>
-          <h2 className="text-2xl font-bold mb-4">Upload Audio</h2>
+      <p className={styles.description}>
+        Meet your speech coach! Get started now by uploading your speech or recording in real-time to get personalized feedback on diction, pace, tone, and more!
+      </p>
+
+      {uploadError && <div className={styles.errorMessage}>{uploadError}</div>}
+
+      <div className={styles.boxContainer}>
+        <div className={styles.recordingBox}>
+          <h2 className={styles.subtitle}>Upload Audio</h2>
           <input
             type="file"
-            accept="audio/mp3"
+            accept="audio/*"
             onChange={handleFileChange}
             className={styles.hiddenInput}
             id="fileInput"
           />
-          <label
-            htmlFor="fileInput"
-            className={styles.uploadButton}
-          >
-            Choose MP3 File
+          <label htmlFor="fileInput" className={styles.uploadButton}>
+            Choose Audio File
           </label>
           {file && <p className={styles.fileName}>{file.name}</p>}
           <button
@@ -114,7 +123,7 @@ export default function Home() {
         </div>
 
         <div className={styles.recordingBox}>
-          <h2 className="text-2xl font-bold mb-4">Record Your Speech</h2>
+          <h2 className={styles.subtitle}>Record Audio</h2>
           <button
             onClick={startRecording}
             disabled={recording}
@@ -130,18 +139,16 @@ export default function Home() {
             Stop Recording
           </button>
           {audioBlob && (
-            <div className="flex flex-col items-center gap-4">
-              <audio controls className="mt-4">
-                <source
-                  src={URL.createObjectURL(audioBlob)}
-                  type="audio/wav"
-                />
+            <div className={styles.audioControls}>
+              <audio controls className={styles.audioPlayer}>
+                <source src={URL.createObjectURL(audioBlob)} type="audio/webm" />
               </audio>
               <button
                 onClick={uploadRecordedAudio}
-                className={styles.uploadRecordButton}
+                disabled={uploading}
+                className={uploading ? styles.disabledButton : styles.uploadRecordButton}
               >
-                Upload Recording
+                {uploading ? "Uploading..." : "Upload Recording"}
               </button>
             </div>
           )}

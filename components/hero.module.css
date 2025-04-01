@@ -9,12 +9,31 @@
 }
 
 .title {
-    font-size: 3rem;
     font-size: 100px;
     font-weight: bold;
     color: rgb(255, 255, 255);
     text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.1);
-    margin-bottom: 30px;
+    margin-bottom: 10px;
+}
+
+.description {
+    font-size: 1.2rem;
+    color: white;
+    text-align: center;
+    max-width: 800px;
+    margin-bottom: 60px;
+}
+
+.boxContainer {
+    display: flex;
+    flex-direction: row;
+    gap: 3rem;
+}
+
+.subtitle {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
 }
 
 .uploadBox {
@@ -23,7 +42,6 @@
     align-items: center;
     gap: 20px;
     background-color: rgba(255, 255, 255, 0.9);
-
     padding: 40px;
     border-radius: 300px;
     box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.15);
@@ -32,7 +50,7 @@
 }
 
 .uploadBox:hover {
-    transform: translateY(-5px); /* Hover effect */
+    transform: translateY(-5px);
 }
 
 .hiddenInput {
@@ -41,32 +59,42 @@
 
 .uploadButton {
     padding: 12px 24px;
-    background-color: #7a77c8;
+    background-color: 
+#7a77c8;
     color: white;
     border: none;
     border-radius: 8px;
     cursor: pointer;
     font-size: 1rem;
     transition: background-color 0.3s ease-in-out;
+    width: 100%;
+    text-align: center;
+    box-sizing: border-box;
 }
 
 .uploadButton:hover {
-    background-color: #483c88;
+    background-color: 
+#483c88;
 }
 
 .disabledButton {
     padding: 12px 24px;
-    background-color: #9ca3af;
+    background-color: 
+#9ca3af;
     color: white;
     border: none;
     border-radius: 8px;
     font-size: 1rem;
     cursor: not-allowed;
+    width: 100%;
+    text-align: center;
+    box-sizing: border-box;
 }
 
 .fileName {
     font-size: 1rem;
-    color: #374151;
+    color: 
+#374151;
 }
 
 .recordingBox {
@@ -79,28 +107,60 @@
     border-radius: 12px;
     box-shadow: 0px 6px 12px rgba(0, 0, 0, 0.15);
     transition: transform 0.3s ease-in-out;
+    width: 300px;
 }
 
 .recordingBox:hover {
     transform: translateY(-5px);
 }
 
-
-.recordButton, .stopButton {
+.recordButton {
     padding: 12px 24px;
-    background-color: #7a77c8;
+    background-color: #6bae84;
     color: white;
     border: none;
     border-radius: 8px;
     cursor: pointer;
     font-size: 1rem;
     transition: background-color 0.3s ease-in-out;
+    width: 100%;
+    text-align: center;
 }
 
-.recordButton:hover, .stopButton:hover {
-    background-color: #483c88;
+.recordButton:hover {
+    background-color: #99e3b4;
 }
 
+.stopButton {
+    padding: 12px 24px;
+    background-color: #e7a0a0; 
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.3s ease-in-out;
+    width: 100%;
+    text-align: center;
+}
+
+.stopButton:hover {
+    background-color: 
+#9f6464;
+}
+
+.audioControls {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    width: 100%;
+}
+
+.audioPlayer {
+    width: 100%;
+    margin-top: 1rem;
+}
 
 .playButton, .uploadRecordButton {
     padding: 12px 24px;
@@ -111,6 +171,8 @@
     cursor: pointer;
     font-size: 1rem;
     transition: background-color 0.3s ease-in-out;
+    width: 100%;
+    text-align: center;
 }
 
 .playButton:hover, .uploadRecordButton:hover {
