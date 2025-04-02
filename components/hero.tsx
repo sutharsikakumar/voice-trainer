@@ -1,9 +1,10 @@
 "use client";
 import { useState, useEffect } from "react";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { useRouter } from "next/navigation";
 import styles from "./hero.module.css";
 
-export default function Home() {
+export default function Hero() {
   const [supabase, setSupabase] = useState<SupabaseClient | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -11,6 +12,7 @@ export default function Home() {
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -23,7 +25,11 @@ export default function Home() {
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
-    selectedFile?.type.startsWith("audio") ? setFile(selectedFile) : alert("Please upload a valid audio file.");
+    if (selectedFile?.type.startsWith("audio")) {
+      setFile(selectedFile);
+    } else {
+      alert("Please upload a valid audio file.");
+    }
   };
 
   const handleUpload = async () => {
@@ -34,35 +40,37 @@ export default function Home() {
     const fileName = `${Date.now()}-${file.name}`;
     const { error } = await supabase.storage
       .from("audio-recordings")
-      .upload(fileName, file, { cacheControl: "3600", upsert: false })
-      .catch((err) => {
-        setUploadError(err.message);
-        throw err;
-      });
+      .upload(fileName, file, { cacheControl: "3600", upsert: false });
 
-    error ? setUploadError(error.message) : setFile(null);
+    if (error) {
+      setUploadError(error.message);
+    } else {
+      setFile(null);
+      router.push(`/analysis`);
+    }
     setUploading(false);
   };
 
   const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
-      let chunks: Blob[] = [];
-
-      recorder.ondataavailable = (event) => event.data.size > 0 && chunks.push(event.data);
-      recorder.onstop = () => {
-        setAudioBlob(new Blob(chunks, { type: "audio/webm" }));
-        stream.getTracks().forEach((track) => track.stop());
-      };
-
-      recorder.start(200);
-      setRecording(true);
-      setMediaRecorder(recorder);
-    } catch (error) {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true }).catch((error) => {
       console.error("Error starting recording:", error);
       setUploadError("Microphone access required for recording");
-    }
+    });
+
+    if (!stream) return;
+    
+    const recorder = new MediaRecorder(stream);
+    let chunks: Blob[] = [];
+
+    recorder.ondataavailable = (event) => event.data.size > 0 && chunks.push(event.data);
+    recorder.onstop = () => {
+      setAudioBlob(new Blob(chunks, { type: "audio/webm" }));
+      stream.getTracks().forEach((track) => track.stop());
+    };
+
+    recorder.start(200);
+    setRecording(true);
+    setMediaRecorder(recorder);
   };
 
   const stopRecording = () => {
@@ -75,18 +83,18 @@ export default function Home() {
     setUploading(true);
     setUploadError(null);
 
-    const file = new File([audioBlob], "recorded-audio.webm", { type: "audio/webm" });
     const fileName = `${Date.now()}-recorded-audio.webm`;
-
+    const file = new File([audioBlob], fileName, { type: "audio/webm" });
     const { error } = await supabase.storage
       .from("audio-recordings")
-      .upload(fileName, file, { cacheControl: "3600", upsert: false })
-      .catch((err) => {
-        setUploadError(err.message);
-        throw err;
-      });
+      .upload(fileName, file, { cacheControl: "3600", upsert: false });
 
-    error ? setUploadError(error.message) : setAudioBlob(null);
+    if (error) {
+      setUploadError(error.message);
+    } else {
+      setAudioBlob(null);
+      router.push(`/analysis`);
+    }
     setUploading(false);
   };
 

@@ -1,9 +1,12 @@
+"use client";
+import { useRouter } from "next/navigation";
 import Hero from "@/components/hero";
 
-export default async function Home() {
+export default function Home() {
+  const router = useRouter();
   return (
     <>
-      <Hero />
+    <Hero />
     </>
   );
 }
