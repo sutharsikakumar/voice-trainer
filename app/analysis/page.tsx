@@ -5,11 +5,21 @@ import styles from "./page.module.css";
 import { processAudio } from "../../utils/audioProcessor";
 import { SpeechAnalysis } from "../../utils/analyzeSpeech";
 import Link from "next/link";
+import { Suspense } from "react";
 
-export default function AnalysisPage() {
+export default function AnalysisPageWrapper() {
+  return (
+    <Suspense fallback={<p>Loading...</p>}>
+      <AnalysisPage />
+    </Suspense>
+  );
+}
+
+function AnalysisPage() {
+  "use client";
   const searchParams = useSearchParams();
   const router = useRouter();
-  const fileName = searchParams.get('fileName');
+  const fileName = searchParams ? searchParams.get('fileName') : null;
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [analysisData, setAnalysisData] = useState<SpeechAnalysis | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -48,17 +58,9 @@ export default function AnalysisPage() {
     };
   }, [fileName, searchParams]);
 
-  const handlePlusClick = () => {
-    setIsPopupOpen(true);
-  };
-
-  const handleClosePopup = () => {
-    setIsPopupOpen(false);
-  };
-
-  const handleBackToHome = () => {
-    router.push('/');
-  };
+  const handlePlusClick = () => setIsPopupOpen(true);
+  const handleClosePopup = () => setIsPopupOpen(false);
+  const handleBackToHome = () => router.push('/');
 
   return (
     <div className={styles.container}>
