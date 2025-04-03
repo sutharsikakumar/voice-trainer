@@ -2,6 +2,7 @@ This is a speech trainer. You can start by uploading or recording an audio segme
 
 <img width="1040" alt="Screenshot 2025-04-03 at 4 04 23 AM" src="https://github.com/user-attachments/assets/f17d6b9a-5fcd-4bb5-be68-900a7aa7c71e" />
 
+
 Future Work:
 1) Currently the Supabase storage is public, which means everyone can access the audio files, in a real-world application this would not be feaseable. Addressing this issue immediately is crucial. 
 2) Making the analysis more personalized, and being able to account for gaps and pauses but not so much that it gets in the way of the delivery of the speech? The algorithm for this would be really cool to implement.
