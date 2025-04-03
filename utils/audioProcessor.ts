@@ -25,10 +25,15 @@ export async function processAudio(fileName: string): Promise<SpeechAnalysis> {
       throw new Error("Could not download audio file");
     }
     
-    // Get audio duration
-    const audioDuration = await getAudioDuration(audioData);
+    // Create a copy of the blob before using it, since Blob isn't clonable
+    // but we can create multiple Blobs from the same ArrayBuffer
+    const audioBuffer = await audioData.arrayBuffer();
+    const audioBlobForDuration = new Blob([audioBuffer], { type: audioData.type });
     
-    // Get transcript
+    // Get audio duration
+    const audioDuration = await getAudioDuration(audioBlobForDuration);
+    
+    // Get transcript (pass fileName, not the blob, as your API handles the download)
     const transcript = await getTranscript(fileName);
     
     // Analyze speech
