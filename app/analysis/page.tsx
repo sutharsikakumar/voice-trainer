@@ -1,25 +1,15 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import styles from "./page.module.css";
 import { processAudio } from "../../utils/audioProcessor";
 import { SpeechAnalysis } from "../../utils/analyzeSpeech";
-import Link from "next/link";
-import { Suspense } from "react";
 
-export default function AnalysisPageWrapper() {
-  return (
-    <Suspense fallback={<p>Loading...</p>}>
-      <AnalysisPage />
-    </Suspense>
-  );
-}
-
-function AnalysisPage() {
-  "use client";
+// Separate component that uses useSearchParams
+function AnalysisContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const fileName = searchParams ? searchParams.get('fileName') : null;
+  const fileName = searchParams.get('fileName');
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [analysisData, setAnalysisData] = useState<SpeechAnalysis | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -56,7 +46,7 @@ function AnalysisPage() {
     return () => {
       isMounted = false;
     };
-  }, [fileName, searchParams]);
+  }, [fileName]);
 
   const handlePlusClick = () => setIsPopupOpen(true);
   const handleClosePopup = () => setIsPopupOpen(false);
@@ -140,5 +130,14 @@ function AnalysisPage() {
         </div>
       )}
     </div>
+  );
+}
+
+// Main component that includes the Suspense boundary
+export default function AnalysisPage() {
+  return (
+    <Suspense fallback={<div>Loading analysis...</div>}>
+      <AnalysisContent />
+    </Suspense>
   );
 }
