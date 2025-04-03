@@ -37,18 +37,52 @@ export default function Hero() {
     setUploading(true);
     setUploadError(null);
 
-    const fileName = `${Date.now()}-${file.name}`;
-    const { error } = await supabase.storage
-      .from("audio-recordings")
-      .upload(fileName, file, { cacheControl: "3600", upsert: false });
+    try {
+      const fileName = `${Date.now()}-${file.name}`;
+      const { data, error } = await supabase.storage
+        .from("audio-recordings")
+        .upload(fileName, file, { cacheControl: "3600", upsert: false });
 
-    if (error) {
-      setUploadError(error.message);
-    } else {
+      if (error) {
+        console.error("Upload error:", error.message);
+        throw new Error(error.message || "Upload failed");
+      }
+
+      // Type assertion for data, as it’s a FileObject or null
+      const uploadData = data as { path: string } | null;
+      if (!uploadData) {
+        console.error("No upload data returned");
+        throw new Error("Upload succeeded but no data returned");
+      }
+
+      console.log("Upload successful, fileName:", fileName, "Path:", uploadData.path);
+
+      // Verify file exists in bucket
+      const { data: listData, error: listError } = await supabase.storage
+        .from("audio-recordings")
+        .list("", { limit: 10 });
+
+      if (listError) {
+        console.error("List bucket error:", listError.message);
+        throw new Error("Failed to verify file in bucket");
+      }
+
+      const fileExists = listData.some(item => item.name === fileName);
+      if (!fileExists) {
+        console.error("File not found in bucket after upload:", fileName);
+        throw new Error("File not found in bucket after upload");
+      }
+
+      console.log("File confirmed in bucket:", fileName);
       setFile(null);
-      router.push(`/analysis`);
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Ensure commit
+      router.push(`/analysis?fileName=${encodeURIComponent(fileName)}&t=${Date.now()}`);
+    } catch (error: any) {
+      console.error("Upload error caught:", error);
+      setUploadError(error.message);
+    } finally {
+      setUploading(false);
     }
-    setUploading(false);
   };
 
   const startRecording = async () => {
@@ -58,7 +92,7 @@ export default function Hero() {
     });
 
     if (!stream) return;
-    
+
     const recorder = new MediaRecorder(stream);
     let chunks: Blob[] = [];
 
@@ -83,19 +117,52 @@ export default function Hero() {
     setUploading(true);
     setUploadError(null);
 
-    const fileName = `${Date.now()}-recorded-audio.webm`;
-    const file = new File([audioBlob], fileName, { type: "audio/webm" });
-    const { error } = await supabase.storage
-      .from("audio-recordings")
-      .upload(fileName, file, { cacheControl: "3600", upsert: false });
+    try {
+      const fileName = `${Date.now()}-recorded-audio.webm`;
+      const file = new File([audioBlob], fileName, { type: "audio/webm" });
+      const { data, error } = await supabase.storage
+        .from("audio-recordings")
+        .upload(fileName, file, { cacheControl: "3600", upsert: false });
 
-    if (error) {
-      setUploadError(error.message);
-    } else {
+      if (error) {
+        console.error("Upload error:", error.message);
+        throw new Error(error.message || "Upload failed");
+      }
+
+      const uploadData = data as { path: string } | null;
+      if (!uploadData) {
+        console.error("No upload data returned");
+        throw new Error("Upload succeeded but no data returned");
+      }
+
+      console.log("Upload successful, fileName:", fileName, "Path:", uploadData.path);
+
+      // Verify file exists in bucket
+      const { data: listData, error: listError } = await supabase.storage
+        .from("audio-recordings")
+        .list("", { limit: 10 });
+
+      if (listError) {
+        console.error("List bucket error:", listError.message);
+        throw new Error("Failed to verify file in bucket");
+      }
+
+      const fileExists = listData.some(item => item.name === fileName);
+      if (!fileExists) {
+        console.error("File not found in bucket after upload:", fileName);
+        throw new Error("File not found in bucket after upload");
+      }
+
+      console.log("File confirmed in bucket:", fileName);
       setAudioBlob(null);
-      router.push(`/analysis`);
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Ensure commit
+      router.push(`/analysis?fileName=${encodeURIComponent(fileName)}&t=${Date.now()}`);
+    } catch (error: any) {
+      console.error("Upload error caught:", error);
+      setUploadError(error.message);
+    } finally {
+      setUploading(false);
     }
-    setUploading(false);
   };
 
   return (
