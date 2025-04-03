@@ -1,3 +1,5 @@
+Deployed on Vercel: voice-trainer-zeta.vercel.app
+
 This is a speech trainer. You can start by uploading or recording an audio segment that will be transcribed using Whisper API and analyzed based on how well it was delivered. Suggestions for improvement will be displayed to the right side. Multiple attempts can be practiced by going back to the home page and re-uploading or re-recording.
 
 <img width="1440" alt="Screenshot 2025-04-03 at 1 25 27 PM" src="https://github.com/user-attachments/assets/c6b25f82-f627-4852-9838-73db080d3941" />
