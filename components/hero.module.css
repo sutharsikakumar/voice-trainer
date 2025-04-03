@@ -116,7 +116,7 @@
 
 .recordButton {
     padding: 12px 24px;
-    background-color: #6bae84;
+    background-color: #49d1aa;
     color: white;
     border: none;
     border-radius: 8px;
@@ -128,7 +128,7 @@
 }
 
 .recordButton:hover {
-    background-color: #99e3b4;
+    background-color: #34ad80;
 }
 
 .stopButton {
