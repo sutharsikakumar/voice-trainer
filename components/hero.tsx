@@ -48,7 +48,7 @@ export default function Hero() {
         throw new Error(error.message || "Upload failed");
       }
 
-      // Type assertion for data, as it’s a FileObject or null
+
       const uploadData = data as { path: string } | null;
       if (!uploadData) {
         console.error("No upload data returned");
@@ -137,7 +137,7 @@ export default function Hero() {
 
       console.log("Upload successful, fileName:", fileName, "Path:", uploadData.path);
 
-      // Verify file exists in bucket
+
       const { data: listData, error: listError } = await supabase.storage
         .from("audio-recordings")
         .list("", { limit: 10 });

@@ -8,10 +8,10 @@ export interface SpeechAnalysis {
   };
   suggestions: string;
   additionalInfo: string;
-  detectedTone?: string; // Optional: detected tone of the speech
+  detectedTone?: string; 
 }
 
-// Define tone keywords
+
 const toneKeywords = {
   persuasive: ["should", "must", "need", "believe", "act", "convince", "agree"],
   informative: ["explain", "describe", "know", "understand", "learn", "fact", "data"],
@@ -26,7 +26,7 @@ export function analyzeSpeech(transcript: string, durationSeconds: number, speec
   const wordCount = words.length;
   const wpm = Math.round((wordCount / durationSeconds) * 60);
 
-  // Filler words analysis
+
   const fillerWordsList = ["um", "uh", "like", "you know", "so", "actually", "basically", "literally"];
   const fillerWordsCount: Record<string, number> = {};
   let totalFillerWords = 0;
@@ -41,7 +41,7 @@ export function analyzeSpeech(transcript: string, durationSeconds: number, speec
 
   const fillerPercentage = wordCount > 0 ? (totalFillerWords / wordCount) * 100 : 0;
 
-  // Tone detection
+
   const toneScores: Record<string, number> = {};
   Object.keys(toneKeywords).forEach(tone => toneScores[tone] = 0);
 
@@ -54,14 +54,14 @@ export function analyzeSpeech(transcript: string, durationSeconds: number, speec
     });
   });
 
-  // Determine dominant tone if not provided
+
   const detectedTone = speechType || Object.entries(toneScores)
     .sort((a, b) => b[1] - a[1])[0]?.[0] || "neutral";
 
   let suggestions = "";
   let additionalInfo = `Detected Tone: ${detectedTone}\n`;
 
-  // Pace suggestions with tone context
+
   if (wpm < 120) {
     suggestions += `Your speaking pace is a bit slow at ${wpm} words per minute. For a${detectedTone === "motivational" ? "n engaging" : ""} ${detectedTone} speech, consider speaking slightly faster to maintain audience engagement.\n\n`;
   } else if (wpm > 160) {
@@ -70,7 +70,7 @@ export function analyzeSpeech(transcript: string, durationSeconds: number, speec
     suggestions += `Your speaking pace is good at ${wpm} words per minute for a ${detectedTone} speech.\n\n`;
   }
 
-  // Filler words suggestions with tone context
+
   if (fillerPercentage > 5) {
     suggestions += `You used filler words frequently (${fillerPercentage.toFixed(1)}% of your speech). In a ${detectedTone} speech, reducing fillers (${Object.keys(fillerWordsCount).join(", ")}) will enhance credibility${detectedTone === "formal" ? " and professionalism" : ""}.\n\n`;
     additionalInfo += "Most used filler words:\n" +
@@ -84,7 +84,6 @@ export function analyzeSpeech(transcript: string, durationSeconds: number, speec
     suggestions += `Great job avoiding filler words, enhancing your ${detectedTone} speech!\n\n`;
   }
 
-  // Speech quality and tone-specific suggestions
   const speechQuality = assessSpeechQuality(cleanTranscript, detectedTone);
   suggestions += speechQuality.suggestions;
   additionalInfo += speechQuality.additionalInfo;
@@ -111,7 +110,7 @@ function assessSpeechQuality(transcript: string, tone: string) {
   let suggestions = "";
   let additionalInfo = "";
 
-  // Sentence length suggestions with tone context
+
   if (avgWordsPerSentence > 25) {
     suggestions += `Your sentences are lengthy (${avgWordsPerSentence.toFixed(1)} words). For a ${tone} speech, shorter sentences can improve${tone === "informative" ? " comprehension" : " impact"}.\n\n`;
     additionalInfo += `Average sentence length: ${avgWordsPerSentence.toFixed(1)} words (recommended: 15-20 words).\n`;
@@ -122,7 +121,7 @@ function assessSpeechQuality(transcript: string, tone: string) {
     additionalInfo += `Average sentence length: ${avgWordsPerSentence.toFixed(1)} words (good range for ${tone} tone).\n`;
   }
 
-  // Tone-specific improvement suggestions
+
   switch (tone) {
     case "persuasive":
       suggestions += "To enhance your persuasive tone, incorporate stronger calls to action (e.g., 'we must act now') and repeat key arguments.\n\n";
