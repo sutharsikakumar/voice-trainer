@@ -5,7 +5,6 @@ import styles from "./page.module.css";
 import { processAudio } from "../../utils/audioProcessor";
 import { SpeechAnalysis } from "../../utils/analyzeSpeech";
 
-// Separate component that uses useSearchParams
 function AnalysisContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -133,7 +132,6 @@ function AnalysisContent() {
   );
 }
 
-// Main component that includes the Suspense boundary
 export default function AnalysisPage() {
   return (
     <Suspense fallback={<div>Loading analysis...</div>}>
