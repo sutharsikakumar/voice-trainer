@@ -1,6 +1,11 @@
 This is a speech trainer. You can start by uploading or recording an audio segment that will be transcribed using Whisper API and analyzed based on how well it was delivered. Suggestions for improvement will be displayed to the right side. Multiple attempts can be practiced by going back to the home page and re-uploading or re-recording.
 
-<img width="1040" alt="Screenshot 2025-04-03 at 4 04 23 AM" src="https://github.com/user-attachments/assets/f17d6b9a-5fcd-4bb5-be68-900a7aa7c71e" />
+<img width="1440" alt="Screenshot 2025-04-03 at 1 25 27 PM" src="https://github.com/user-attachments/assets/c6b25f82-f627-4852-9838-73db080d3941" />
+
+
+There are also things to improve upon, such as the words per minute calculation (does not work if under 1 minute speech), and making the analysis more robust in general. Currently, only very rudimentary calculations are being performed. 
+
+<img width="1440" alt="Screenshot 2025-04-03 at 1 25 21 PM" src="https://github.com/user-attachments/assets/faf83dc6-2f99-49be-a30f-b12269fc5a37" />
 
 
 Future Work:
