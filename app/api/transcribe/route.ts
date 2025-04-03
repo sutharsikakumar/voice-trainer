@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Readable } from 'stream';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 import OpenAI from 'openai';
 
 const openai = new OpenAI({
@@ -27,16 +30,18 @@ export async function POST(request: Request) {
       );
     }
 
+    const tempFilePath = path.join(os.tmpdir(), fileName);
+  
     const buffer = Buffer.from(await data.arrayBuffer());
-    const readable = new Readable();
-    readable.push(buffer);
-    readable.push(null);
-
+    fs.writeFileSync(tempFilePath, buffer);
+    
     const transcription = await openai.audio.transcriptions.create({
-      file: new File([buffer], fileName, { type: 'audio/mpeg' }),
+      file: fs.createReadStream(tempFilePath),
       model: 'whisper-1',
       response_format: 'text',
     });
+    
+    fs.unlinkSync(tempFilePath);
 
     return NextResponse.json({ 
       text: transcription

@@ -8,11 +8,13 @@ import { SpeechAnalysis } from "../../utils/analyzeSpeech";
 function AnalysisContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const fileName = searchParams.get('fileName');
+  const fileName = searchParams.get('fileName')!;
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [analysisData, setAnalysisData] = useState<SpeechAnalysis | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+
 
   useEffect(() => {
     if (!fileName) {
