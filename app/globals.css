@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Wix+Madefor+Text:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -8,36 +8,20 @@
   :root {
     --background: 0 0% 100%;
     --foreground: 0 0% 3.9%;
-    --font-family: 'Wix Madefor Text', sans-serif;
-    /* Other Tailwind variables remain unchanged */
+    --font-family: 'Inter', sans-serif;
   }
 
   .dark {
     --background: 0 0% 3.9%;
     --foreground: 0 0% 98%;
-    /* Other Tailwind variables remain unchanged */
   }
 
   * {
     @apply border-border;
-    font-family: 'Wix Madefor Text', sans-serif;
-  }
-
-  body {
-    @apply bg-background text-foreground;
-    height: 100vh;
-    margin: 0;
-    padding: 0;
-    background: radial-gradient(circle at 20% 30%, #4f55c9, transparent),
-                radial-gradient(circle at 80% 20%, #000000, transparent),
-                radial-gradient(circle at 50% 80%, #5d0359, transparent),
-                radial-gradient(circle at 90% 70%, #000000, transparent),
-                radial-gradient(circle at 10% 90%, #ba1d1d, transparent);
-    background-color: #f3f4f6;
-    font-family: 'Wix Madefor Text', sans-serif;
+    font-family: 'Inter', sans-serif;
   }
 
   h1, h2, h3, h4, h5, h6, p, span, div, button, input, textarea, select {
-    font-family: 'Wix Madefor Text', sans-serif;
+    font-family: 'Inter', sans-serif;
   }
 }
