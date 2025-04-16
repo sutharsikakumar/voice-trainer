@@ -1,0 +1,195 @@
+.main {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  width: 100vw;
+  padding: 0;
+  margin: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+  background-color: #fdfdf5;
+}
+
+.contentContainer {
+  display: flex;
+  flex: 1;
+  padding: 2rem;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.twisterContainer {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.welcomeText {
+  font-size: 1.5rem;
+  margin-bottom: 2rem;
+  text-align: center;
+  width: 100%;
+}
+
+.twisterTitle {
+  font-weight: bold;
+}
+
+.tonguetwisterBox {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.tonguetwister {
+  font-size: 1.5rem;
+  text-align: center;
+  margin-bottom: 3rem;
+  font-weight: normal;
+}
+
+.actionsContainer {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.regenerateButton {
+  background-color: #000;
+  color: #fdfdf5;
+  border: none;
+  border-radius: 2rem;
+  padding: 0.75rem 2rem;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.regenerateButton:hover {
+  opacity: 0.7;
+}
+
+.controlsContainer {
+  display: flex;
+  gap: 1rem;
+}
+
+.iconButton {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.iconImage {
+  width: 2rem;
+  height: 2rem;
+}
+
+.audioContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+.recordButton {
+  width: 60px;
+  height: 60px;
+  background-color: #000;
+  border: 2px solid #000;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.recordButton:hover {
+  background-color: #333;
+}
+
+.recording {
+  background-color: #ff0000;
+  border-color: #ff0000;
+}
+
+.recording:hover {
+  background-color: #cc0000;
+}
+
+.innerCircle {
+  width: 30px;
+  height: 30px;
+  background-color: #fdfdf5;
+  border-radius: 50%;
+}
+
+.waveformWrapper {
+  width: 100%;
+  max-width: 400px;
+  margin: 1rem 0;
+}
+
+.waveform {
+  width: 100%;
+  height: 100px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.uploadButton {
+  border: 2px solid #000;
+  background-color: #fdfdf5;
+  border-radius: 2rem;
+  padding: 0.75rem 2rem;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.uploadButton:hover {
+  opacity: 0.4;
+}
+
+.feedbackPanel {
+  flex: 1;
+  border: 2px solid #000;
+  border-radius: 1.5rem;
+  padding: 2rem;
+  max-width: 550px;
+}
+
+.feedbackTitle {
+  font-weight: bold;
+  font-size: 1.2rem;
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.feedbackContent {
+  text-align: center;
+}
+
+@media (max-width: 768px) {
+  .contentContainer {
+      flex-direction: column;
+  }
+
+  .feedbackPanel {
+      max-width: 100%;
+      width: 100%;
+  }
+}
