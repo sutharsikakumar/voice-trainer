@@ -8,12 +8,14 @@ import WaveSurfer from "wavesurfer.js";
 export default function Twister() {
   const [isRecording, setIsRecording] = useState(false);
   const [audioURL, setAudioURL] = useState<string | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const waveformRef = useRef<HTMLDivElement>(null);
   const wavesurferRef = useRef<WaveSurfer | null>(null);
 
   const startRecording = async () => {
+    setAudioURL(null);
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     const mediaRecorder = new MediaRecorder(stream);
     mediaRecorderRef.current = mediaRecorder;
@@ -40,10 +42,6 @@ export default function Twister() {
 
   useEffect(() => {
     if (audioURL && waveformRef.current) {
-      if (wavesurferRef.current) {
-        wavesurferRef.current.destroy();
-      }
-
       wavesurferRef.current = WaveSurfer.create({
         container: waveformRef.current,
         waveColor: "#999",
@@ -51,8 +49,19 @@ export default function Twister() {
         height: 100,
       });
 
+      wavesurferRef.current.on('play', () => setIsPlaying(true));
+      wavesurferRef.current.on('pause', () => setIsPlaying(false));
+      wavesurferRef.current.on('finish', () => setIsPlaying(false));
+
       wavesurferRef.current.load(audioURL);
     }
+
+    return () => {
+      if (wavesurferRef.current) {
+        wavesurferRef.current.destroy();
+        wavesurferRef.current = null;
+      }
+    };
   }, [audioURL]);
 
   return (
@@ -75,17 +84,7 @@ export default function Twister() {
                 Regenerate
               </button>
 
-              <div className={styles.controlsContainer}>
-                <button className={styles.iconButton}>
-                  <img src="/square-icon.png" alt="Square Icon" className={styles.iconImage} />
-                </button>
-                <button className={styles.iconButton}>
-                  <img src="/refresh-icon.png" alt="Refresh Icon" className={styles.iconImage} />
-                </button>
-              </div>
-
               <div className={styles.audioContainer}>
-                {/* 🎤 Record Button */}
                 <button
                   className={`${styles.recordButton} ${isRecording ? styles.recording : ""}`}
                   onClick={isRecording ? stopRecording : startRecording}
@@ -94,14 +93,21 @@ export default function Twister() {
                   <div className={styles.innerCircle}></div>
                 </button>
 
-                {/* 🧠 Waveform (post-recording) */}
-                {audioURL && (
-                  <div className={styles.waveformWrapper}>
-                    <div ref={waveformRef} className={styles.waveform}></div>
-                  </div>
+                {!isRecording && audioURL && (
+                  <>
+                    <div className={styles.waveformWrapper}>
+                      <div ref={waveformRef} className={styles.waveform}></div>
+                    </div>
+                    <button
+                      className={styles.uploadButton}
+                      onClick={() => wavesurferRef.current?.playPause()}
+                      aria-label={isPlaying ? "Pause recording" : "Play recording"}
+                    >
+                      {isPlaying ? "Pause" : "Play"}
+                    </button>
+                    <button className={styles.uploadButton}>Upload</button>
+                  </>
                 )}
-
-                <button className={styles.uploadButton}>Upload</button>
               </div>
             </div>
           </div>
