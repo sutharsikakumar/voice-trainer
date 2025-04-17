@@ -13,7 +13,8 @@ interface AnalysisResponse {
     analysis: AudioAnalysis;
     feedback: string;
   };
-  error?: string; 
+  error?: string;
+}
 
 interface UploadResponse {
   success: boolean;
