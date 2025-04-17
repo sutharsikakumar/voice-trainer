@@ -13,8 +13,7 @@ interface AnalysisResponse {
     analysis: AudioAnalysis;
     feedback: string;
   };
-  error?: string; // Added optional error property
-}
+  error?: string; 
 
 interface UploadResponse {
   success: boolean;
@@ -79,7 +78,6 @@ export default function Twister(): JSX.Element {
 
   const startRecording = async () => {
     try {
-      // Clean up previous recording
       if (wavesurferRef.current) {
         wavesurferRef.current.destroy();
         wavesurferRef.current = null;
@@ -90,14 +88,12 @@ export default function Twister(): JSX.Element {
       }
       audioChunksRef.current = [];
 
-      // Clear the waveform container
       if (waveformRef.current) {
         waveformRef.current.innerHTML = '';
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       
-      // Try different MIME types for better browser compatibility
       const mimeTypes = [
         'audio/webm;codecs=opus',
         'audio/webm',
@@ -134,8 +130,6 @@ export default function Twister(): JSX.Element {
           type: mediaRecorder.mimeType,
         });
         audioBlobRef.current = audioBlob;
-
-        // Initialize WaveSurfer after recording is complete
         if (waveformRef.current && audioBlob) {
           const audioUrl = URL.createObjectURL(audioBlob);
           wavesurferRef.current = WaveSurfer.create({
@@ -169,13 +163,11 @@ export default function Twister(): JSX.Element {
       mediaRecorderRef.current.stop();
       mediaRecorderRef.current.stream.getTracks().forEach((track: MediaStreamTrack) => track.stop());
       
-      // Create the audio blob immediately after stopping
       const audioBlob = new Blob(audioChunksRef.current, {
         type: mediaRecorderRef.current.mimeType,
       });
       audioBlobRef.current = audioBlob;
       
-      // Initialize WaveSurfer with the final recording
       if (waveformRef.current && audioBlob) {
         const audioUrl = URL.createObjectURL(audioBlob);
         if (wavesurferRef.current) {

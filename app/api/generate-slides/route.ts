@@ -8,8 +8,8 @@ const openai = new OpenAI({
 
 interface Slide {
   title: string;
-  content: string[];
-  imageDescription: string;
+  content: string;
+  imageUrl?: string;
 }
 
 export async function POST(request: Request) {
@@ -25,15 +25,21 @@ export async function POST(request: Request) {
       );
     }
 
-    let transcript;
+    // Transcribe audio
+    let transcript: string;
     try {
       if (audioFile) {
         transcript = await transcribeAudio(audioFile);
       } else if (audioUrl) {
         const response = await fetch(audioUrl);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch audio: ${response.statusText}`);
+        }
         const audioBlob = await response.blob();
-        const audioFile = new File([audioBlob], 'audio.webm', { type: 'audio/webm' });
-        transcript = await transcribeAudio(audioFile);
+        const file = new File([audioBlob], 'audio.webm', { type: 'audio/webm' });
+        transcript = await transcribeAudio(file);
+      } else {
+        throw new Error('No valid audio source provided');
       }
     } catch (error) {
       console.error('Error in transcription:', error);
@@ -42,183 +48,129 @@ export async function POST(request: Request) {
         { status: 500 }
       );
     }
-    
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        {
-          role: "system",
-          content: `You are a professional presentation creator. Create a presentation with 6 slides based on the provided transcript. 
-          Each slide should have a title and bullet points. 
-          Format your response as a valid JSON object with this exact structure:
+
+    // Generate slides
+    let slidesContent;
+    try {
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
           {
-            "slides": [
-              {
-                "title": "Slide Title",
-                "content": "Bullet point 1\nBullet point 2\nBullet point 3"
-              }
-            ]
+            role: "system",
+            content: `You are a professional presentation creator. Create a presentation with 6 slides based on the provided transcript.
+            Return ONLY a valid JSON object with this exact structure, and nothing else:
+            {
+              "slides": [
+                {
+                  "title": "string",
+                  "content": "• Bullet point 1\\n• Bullet point 2\\n• Bullet point 3"
+                }
+              ]
+            }
+            Requirements:
+            1. The JSON must be properly escaped
+            2. There must be exactly 6 slides
+            3. Each slide must have a title and content
+            4. Content must be formatted as bullet points with • character
+            5. Points must be separated by \\n
+            6. No special characters that would break JSON parsing`
+          },
+          {
+            role: "user",
+            content: `Create slides from this transcript: ${transcript}`
           }
-          Make sure the response is valid JSON and contains exactly 6 slides.`
-        },
-        {
-          role: "user",
-          content: `Create slides from this transcript: ${transcript}`
-        }
-      ],
-      temperature: 0.7,
-      max_tokens: 2000
-    });
+        ],
+        temperature: 0.7,
+        max_tokens: 2000
+      });
 
-    if (!completion.choices[0]?.message?.content) {
-      throw new Error('No content received from GPT-4');
-    }
-
-    const slidesContent = JSON.parse(completion.choices[0].message.content);
-    
-    if (!slidesContent.slides || !Array.isArray(slidesContent.slides)) {
-      throw new Error('Invalid slides format received from GPT-4');
-    }
-    
-    const slidesWithImages = await Promise.all(
-      slidesContent.slides.map(async (slide: any) => {
-        try {
-          const imageResponse = await openai.images.generate({
-            model: "dall-e-3",
-            prompt: `Create a professional presentation slide image for: ${slide.title}. The image should be simple, clean, and relevant to the topic.`,
-            n: 1,
-            size: "1024x1024",
-          });
-          
-          return {
-            ...slide,
-            imageUrl: imageResponse.data[0].url
-          };
-        } catch (error) {
-          console.error('Error generating image:', error);
-          return {
-            ...slide,
-            imageUrl: null
-          };
-        }
-      })
-    );
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        slides: slidesWithImages,
-        transcript
+      if (!completion.choices[0]?.message?.content) {
+        throw new Error('No content received from GPT-4');
       }
-    });
+
+      // Clean and parse the response
+      const cleanedContent = completion.choices[0].message.content
+        .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
+        .trim();
+      
+      try {
+        slidesContent = JSON.parse(cleanedContent);
+      } catch (parseError) {
+        console.error('Raw GPT response:', cleanedContent);
+        throw new Error('Failed to parse GPT-4 response as JSON');
+      }
+      
+      // Validate response structure
+      if (!slidesContent?.slides || !Array.isArray(slidesContent.slides)) {
+        throw new Error('Invalid response structure: missing slides array');
+      }
+      
+      if (slidesContent.slides.length !== 6) {
+        throw new Error(`Expected 6 slides, got ${slidesContent.slides.length}`);
+      }
+      
+      // Validate each slide
+      slidesContent.slides.forEach((slide: any, index: number) => {
+        if (!slide?.title || typeof slide.title !== 'string') {
+          throw new Error(`Invalid or missing title in slide ${index + 1}`);
+        }
+        if (!slide?.content || typeof slide.content !== 'string') {
+          throw new Error(`Invalid or missing content in slide ${index + 1}`);
+        }
+      });
+    } catch (error) {
+      console.error('Error generating slides:', error);
+      return NextResponse.json(
+        { error: error instanceof Error ? error.message : 'Failed to generate slides', success: false },
+        { status: 500 }
+      );
+    }
+
+    // Generate images for slides
+    try {
+      const slidesWithImages = await Promise.all(
+        slidesContent.slides.map(async (slide: Slide, index: number) => {
+          try {
+            const imageResponse = await openai.images.generate({
+              model: "dall-e-3",
+              prompt: `Create a professional presentation slide image for: ${slide.title}. The image should be simple, clean, and relevant to the topic.`,
+              n: 1,
+              size: "1024x1024",
+            });
+            
+            return {
+              ...slide,
+              imageUrl: imageResponse.data[0].url
+            };
+          } catch (error) {
+            console.error(`Error generating image for slide ${index + 1}:`, error);
+            return {
+              ...slide,
+              imageUrl: null
+            };
+          }
+        })
+      );
+
+      return NextResponse.json({
+        success: true,
+        data: {
+          slides: slidesWithImages,
+          transcript
+        }
+      });
+    } catch (error) {
+      console.error('Error processing slides with images:', error);
+      return NextResponse.json(
+        { error: 'Failed to generate slide images', success: false },
+        { status: 500 }
+      );
+    }
   } catch (error) {
-    console.error('Error in generate-slides API:', error);
+    console.error('Unhandled error in generate-slides API:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to generate slides', success: false },
+      { error: 'Internal server error', success: false },
       { status: 500 }
     );
   }
-}
-
-const generateSlides = async (transcript: string) => {
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4",
-    messages: [
-      {
-        role: "system",
-        content: `You are a presentation expert. Create 6 slides based on the provided transcript. Each slide should have a title, content in bullet points, and an image description. Format the response as a JSON array of slide objects, each with: title, content, and imageDescription fields.`
-      },
-      {
-        role: "user",
-        content: `Create 6 presentation slides from this transcript: ${transcript}`
-      }
-    ],
-    response_format: { type: "json_object" },
-    temperature: 0.7,
-    max_tokens: 2000
-  });
-
-  const responseContent = completion.choices[0].message.content;
-  if (!responseContent) {
-    throw new Error('No content received from GPT-4');
-  }
-
-  const cleanedContent = responseContent
-    .replace(/[\u0000-\u001F\u007F-\u009F]/g, '')
-    .trim();
-
-  let slidesData;
-  try {
-    const parsedContent = JSON.parse(cleanedContent);
-    if (!parsedContent.slides || !Array.isArray(parsedContent.slides)) {
-      throw new Error('Invalid response structure: missing slides array');
-    }
-    slidesData = parsedContent.slides;
-    
-    if (slidesData.length !== 6) {
-      throw new Error(`Expected 6 slides, got ${slidesData.length}`);
-    }
-    
-    slidesData.forEach((slide: Slide, index: number) => {
-      if (!slide.title || typeof slide.content !== 'string' || !slide.imageDescription) {
-        throw new Error(`Invalid slide structure at index ${index}`);
-      }
-    });
-  } catch (parseError) {
-    console.error('Failed to parse GPT-4 response:', cleanedContent);
-    throw new Error('Invalid JSON response from GPT-4: ' + (parseError as Error).message);
-  }
-
-  const slidesWithImages = await Promise.all(
-    slidesData.map(async (slide: any) => {
-      try {
-        const imageResponse = await openai.images.generate({
-          model: "dall-e-3",
-          prompt: slide.imageDescription,
-          n: 1,
-          size: "1024x1024",
-          quality: "standard",
-        });
-
-        return {
-          ...slide,
-          imageUrl: imageResponse.data[0].url
-        };
-      } catch (imageError) {
-        console.error('Error generating image for slide:', slide.title, imageError);
-        return {
-          ...slide,
-          imageUrl: null
-        };
-      }
-    })
-  );
-
-  return slidesWithImages;
-};
-
-function parsePresentationContent(content: string | null) {
-  if (!content) return [];
-  
-  const slideSections = content.split(/\n\nSlide \d+:/).filter(Boolean);
-  
-  return slideSections.map(section => {
-    const lines = section.split('\n');
-    const title = lines[0].replace('Title:', '').trim();
-    const content = lines
-      .slice(1)
-      .filter(line => !line.includes('Image Concept:'))
-      .join('\n')
-      .trim();
-    const imageConcept = lines
-      .find(line => line.includes('Image Concept:'))
-      ?.replace('Image Concept:', '')
-      .trim();
-
-    return {
-      title,
-      content,
-      imageConcept: imageConcept || undefined,
-    };
-  });
 } 
