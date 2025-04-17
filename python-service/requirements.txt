@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+librosa
+numpy
+requests
+pydantic
+ffmpeg-python

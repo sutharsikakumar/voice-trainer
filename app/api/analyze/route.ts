@@ -2,28 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
-    // Parse JSON data instead of trying to get FormData
-    const jsonData = await request.json();
-    const { filePath, tongueTwister } = jsonData;
+    const formData = await request.formData();
+    const audioUrl = formData.get('audioUrl') as string;
     
-    if (!filePath) {
+    if (!audioUrl) {
       return NextResponse.json(
-        { success: false, error: "No file path provided" },
+        { success: false, error: "No audio URL provided" },
         { status: 400 }
       );
     }
 
-    // Forward to Python service
     const pythonServiceUrl = process.env.PYTHON_SERVICE_URL || "http://localhost:8000";
     
     try {
-      // Create a JSON payload for the Python service
       const pythonRequest = {
-        filePath,
-        tongueTwister
+        filePath: audioUrl
       };
 
-      // Send to Python service as JSON
       const analysisResponse = await fetch(`${pythonServiceUrl}/analyze-audio`, {
         method: "POST",
         headers: {
@@ -34,14 +29,33 @@ export async function POST(request: NextRequest) {
       
       if (!analysisResponse.ok) {
         const errorData = await analysisResponse.text();
+        console.error("Python service error:", errorData);
         return NextResponse.json(
-          { success: false, error: `Python service error: ${errorData}` },
+          { success: false, error: `Analysis failed: ${errorData}` },
           { status: 500 }
         );
       }
 
       const analysisResult = await analysisResponse.json();
-      return NextResponse.json({ success: true, ...analysisResult });
+      
+      if (!analysisResult.success || !analysisResult.data) {
+        return NextResponse.json(
+          { success: false, error: "Invalid response from analysis service" },
+          { status: 500 }
+        );
+      }
+
+      const { analysis, feedback } = analysisResult.data;
+      return NextResponse.json({
+        success: true,
+        data: {
+          duration: analysis.duration,
+          speech_rate: analysis.speech_rate,
+          rms_energy: analysis.rms_energy,
+          pitch_std: analysis.pitch_std,
+          feedback: feedback
+        }
+      });
     } catch (connectionError) {
       console.error("Error connecting to Python service:", connectionError);
       return NextResponse.json(

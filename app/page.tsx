@@ -35,7 +35,7 @@ export default function Home() {
             <div className={styles.card}>
               <div className={styles.cardImage}>
                 <Image
-                  src="/images/twister.png"
+                  src="/images/presenter.png"
                   alt="Twister Screenshot"
                   layout="fill"
                   objectFit="cover"
@@ -43,20 +43,6 @@ export default function Home() {
               </div>
               <h3 className={styles.cardTitle}>
                 Upload/record your speech to generate a slide presentation ensuring audiences are engaged.
-              </h3>
-            </div>
-
-            <div className={styles.card}>
-              <div className={styles.cardImage}>
-                <Image
-                  src="/images/twister.png"
-                  alt="Twister Screenshot"
-                  layout="fill"
-                  objectFit="cover"
-                />
-              </div>
-              <h3 className={styles.cardTitle}>
-                Upload/record your speech and receive personalized feedback on how to improve delivery.
               </h3>
             </div>
           </div>

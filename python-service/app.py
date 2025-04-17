@@ -1,12 +1,16 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Body
+from fastapi import FastAPI, HTTPException, Body
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import librosa
 import numpy as np
+import requests
+import logging
+import io
+import ffmpeg
 import tempfile
 import os
-import logging
-
+import subprocess
+import shutil
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -20,6 +24,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+def check_ffmpeg():
+    """Check if ffmpeg is installed and accessible."""
+    try:
+        subprocess.run(['ffmpeg', '-version'], capture_output=True, check=True)
+        return True
+    except (subprocess.SubprocessError, FileNotFoundError):
+        return False
+
 class AudioAnalysisRequest(BaseModel):
     filePath: str
     tongueTwister: str = ""
@@ -28,61 +40,66 @@ class AudioAnalysisRequest(BaseModel):
 async def read_root():
     return {"status": "Audio analysis service is running"}
 
-@app.post("/upload-audio")
-async def upload_audio(file: UploadFile = File(...)):
-    logger.info(f"Received file: {file.filename}, Content-Type: {file.content_type}")
-    
-    if not file:
-        logger.error("No file uploaded")
-        raise HTTPException(status_code=400, detail="No file uploaded")
-    
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as temp_file:
-        try:
-            content = await file.read()
-            temp_file.write(content)
-            temp_file.flush()
-            
-            analysis_result = analyze_audio_file(temp_file.name)
-            return {
-                "data": {
-                    "analysis": analysis_result,
-                    "feedback": generate_feedback(analysis_result)
-                }
-            }
-        except Exception as e:
-            logger.error(f"Error analyzing audio: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Analysis error: {str(e)}")
-        finally:
-            os.unlink(temp_file.name)
-
 @app.post("/analyze-audio")
 async def analyze_audio(request: AudioAnalysisRequest):
-    logger.info(f"Received request to analyze file at path: {request.filePath}")
+    logger.info(f"Received request to analyze file at URL: {request.filePath}")
+    
+    if not check_ffmpeg():
+        raise HTTPException(
+            status_code=500,
+            detail="ffmpeg is not installed or not accessible. Please install ffmpeg and ensure it's in your PATH."
+        )
     
     try:
-        if not os.path.exists(request.filePath):
-            logger.error(f"File not found at path: {request.filePath}")
-            raise HTTPException(status_code=404, detail="File not found")
+        response = requests.get(request.filePath)
+        if response.status_code != 200:
+            logger.error(f"Failed to download file from URL: {request.filePath}")
+            raise HTTPException(status_code=404, detail="Failed to download audio file")
         
-        analysis_result = analyze_audio_file(request.filePath)
-    
-        feedback = generate_feedback(analysis_result, request.tongueTwister)
-        
-        return {
-            "data": {
-                "analysis": analysis_result,
-                "feedback": feedback
-            }
-        }
+        temp_dir = tempfile.mkdtemp()
+        try:
+            webm_path = os.path.join(temp_dir, "input.webm")
+            with open(webm_path, 'wb') as f:
+                f.write(response.content)
+            
+            wav_path = os.path.join(temp_dir, "output.wav")
+            try:
+                stream = ffmpeg.input(webm_path)
+                stream = ffmpeg.output(stream, wav_path, acodec='pcm_s16le', ac=1, ar='16k')
+                ffmpeg.run(stream, capture_stdout=True, capture_stderr=True)
+            except ffmpeg.Error as e:
+                logger.error(f"FFmpeg error: {e.stderr.decode()}")
+                raise HTTPException(status_code=500, detail=f"Audio conversion failed: {e.stderr.decode()}")
+            
+            try:
+                y, sr = librosa.load(wav_path, sr=None)
+            except Exception as e:
+                logger.error(f"Librosa error: {str(e)}")
+                raise HTTPException(status_code=500, detail=f"Failed to load audio file: {str(e)}")
+            
+            try:
+                analysis_result = analyze_audio_data(y, sr)
+                feedback = generate_feedback(analysis_result, request.tongueTwister)
+                
+                return {
+                    "success": True,
+                    "data": {
+                        "analysis": analysis_result,
+                        "feedback": feedback
+                    }
+                }
+            except Exception as e:
+                logger.error(f"Analysis error: {str(e)}")
+                raise HTTPException(status_code=500, detail=f"Audio analysis failed: {str(e)}")
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
     except Exception as e:
         logger.error(f"Error analyzing audio: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Analysis error: {str(e)}")
 
-def analyze_audio_file(file_path):
-    """Analyze audio file using librosa and return metrics."""
+def analyze_audio_data(y, sr):
+    """Analyze audio data using librosa and return metrics."""
     try:
-        y, sr = librosa.load(file_path, sr=None)
-        
         duration = librosa.get_duration(y=y, sr=sr)
         
         onset_env = librosa.onset.onset_strength(y=y, sr=sr)

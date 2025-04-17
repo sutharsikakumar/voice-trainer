@@ -1,0 +1,13 @@
+version: '3'
+
+services:
+  python-service:
+    build: 
+      context: ./python-service
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./python-service:/app
+    environment:
+      - PYTHONUNBUFFERED=1 
