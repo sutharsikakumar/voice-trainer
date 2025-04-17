@@ -1,3 +1,43 @@
+export interface SpeechAnalysis {
+  duration: number;
+  speech_rate: number;
+  rms_energy: number;
+  pitch_std: number;
+  feedback?: string;
+}
+
+export async function getAudioDuration(audioData: Blob): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const audio = new Audio();
+    const url = URL.createObjectURL(audioData);
+    
+    audio.addEventListener('loadedmetadata', () => {
+      URL.revokeObjectURL(url);
+      resolve(audio.duration);
+    });
+    
+    audio.addEventListener('error', (error) => {
+      URL.revokeObjectURL(url);
+      reject(error);
+    });
+    
+    audio.src = url;
+  });
+}
+
+export function analyzeSpeech(transcript: string, duration: number): SpeechAnalysis {
+  // Basic analysis based on transcript length and duration
+  const wordCount = transcript.split(/\s+/).length;
+  const speech_rate = wordCount / (duration / 60); // words per minute
+  
+  return {
+    duration,
+    speech_rate,
+    rms_energy: 0.5, // placeholder value
+    pitch_std: 20, // placeholder value
+  };
+}
+
 export async function analyzeAudio(audioBlob: Blob): Promise<any> {
   try {
     const formData = new FormData();
