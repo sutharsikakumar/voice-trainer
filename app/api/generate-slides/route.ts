@@ -50,7 +50,7 @@ async function handleTranscription(audioUrl: string): Promise<string> {
 // Separate function for slide generation
 async function generateSlides(transcript: string) {
   const completion = await openai.chat.completions.create({
-    model: "gpt-4",
+    model: "gpt-4-1106-preview",
     messages: [
       {
         role: "system",
@@ -78,7 +78,8 @@ async function generateSlides(transcript: string) {
       }
     ],
     temperature: 0.7,
-    max_tokens: 2000
+    max_tokens: 2000,
+    response_format: { type: "json_object" }
   });
 
   if (!completion.choices[0]?.message?.content) {
@@ -100,6 +101,8 @@ async function generateImage(slide: Slide, index: number) {
       prompt: `Create a professional presentation slide image for: ${slide.title}. The image should be simple, clean, and relevant to the topic.`,
       n: 1,
       size: "1024x1024",
+      quality: "standard",
+      style: "natural"
     });
     
     return {
