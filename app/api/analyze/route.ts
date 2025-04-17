@@ -1,73 +1,62 @@
-import { createClient } from '@supabase/supabase-js';
-import axios from 'axios';
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseServiceKey) {
-  throw new Error('Supabase URL or Service Key is missing');
-}
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey);
-const PYTHON_SERVICE_URL = process.env.PYTHON_SERVICE_URL || 'http://localhost:3000';
-
-export async function POST(req: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
-    const body = await req.json();
-    const { filePath, tongueTwister } = body;
-
+    // Parse JSON data instead of trying to get FormData
+    const jsonData = await request.json();
+    const { filePath, tongueTwister } = jsonData;
+    
     if (!filePath) {
-      return NextResponse.json({ success: false, error: 'File path is required' }, { status: 400 });
+      return NextResponse.json(
+        { success: false, error: "No file path provided" },
+        { status: 400 }
+      );
     }
 
-    const fileKey = filePath.startsWith('/') ? filePath.substring(1) : filePath;
-    const tempFilePath = path.join(os.tmpdir(), `temp-${Date.now()}.wav`);
-    const { data, error } = await supabase.storage
-      .from('audio-recordings')
-      .download(fileKey);
+    // Forward to Python service
+    const pythonServiceUrl = process.env.PYTHON_SERVICE_URL || "http://localhost:8000";
+    
+    try {
+      // Create a JSON payload for the Python service
+      const pythonRequest = {
+        filePath,
+        tongueTwister
+      };
 
-    if (error) {
-      console.error('Error downloading file from Supabase:', error);
-      return NextResponse.json({ success: false, error: 'Failed to download file' }, { status: 500 });
-    }
-
-    const buffer = await data.arrayBuffer();
-    fs.writeFileSync(tempFilePath, Buffer.from(buffer));
-    const analysisResponse = await axios.post(`${PYTHON_SERVICE_URL}/analyze`, {
-      file_path: tempFilePath,
-      tongue_twister: tongueTwister,
-    });
-
-    fs.unlinkSync(tempFilePath);
-    const analysisData = {
-      success: true,
-      data: {
-        analysis: {
-          duration: analysisResponse.data.duration || 0,
-          tempo: analysisResponse.data.tempo || 0,
-          pitch_mean: analysisResponse.data.pitch_mean || 0,
-          pitch_std: analysisResponse.data.pitch_std || 0,
-          speech_rate: analysisResponse.data.speech_rate || 0,
-          rms_energy: analysisResponse.data.rms_energy || 0,
-          spectral_centroid: analysisResponse.data.spectral_centroid || 0,
-          spectral_bandwidth: analysisResponse.data.spectral_bandwidth || 0,
+      // Send to Python service as JSON
+      const analysisResponse = await fetch(`${pythonServiceUrl}/analyze-audio`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
         },
-        feedback: analysisResponse.data.feedback || 'No feedback provided',
-      },
-    };
+        body: JSON.stringify(pythonRequest),
+      });
+      
+      if (!analysisResponse.ok) {
+        const errorData = await analysisResponse.text();
+        return NextResponse.json(
+          { success: false, error: `Python service error: ${errorData}` },
+          { status: 500 }
+        );
+      }
 
-    return NextResponse.json(analysisData);
+      const analysisResult = await analysisResponse.json();
+      return NextResponse.json({ success: true, ...analysisResult });
+    } catch (connectionError) {
+      console.error("Error connecting to Python service:", connectionError);
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: "Failed to connect to analysis service. Is the Python service running?" 
+        },
+        { status: 503 }
+      );
+    }
   } catch (error) {
-    console.error('Error in analysis API route:', error);
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
+    console.error("Audio analysis error:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to process audio analysis request" },
+      { status: 500 }
+    );
   }
-}
-
-export async function GET(req: NextRequest) {
-  return NextResponse.json({ success: false, error: 'Method not allowed' }, { status: 405 });
 }
