@@ -3,8 +3,8 @@ import WaveSurfer from 'wavesurfer.js';
 export interface AudioAnalysis {
   clarity: string;
   pace: string;
-  pronunciation: string;
-  suggestions: string[];
+  confidence: string;
+  improvements: string;
   feedback: string;
   duration: number;
   speech_rate: number;

@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from 'openai';
 import { transcribeAudio } from '@/utils/transcribeAudio';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+const PYTHON_SERVICE_URL = process.env.PYTHON_SERVICE_URL || "http://localhost:8000";
 
 export async function POST(request: Request) {
   try {
@@ -19,66 +16,59 @@ export async function POST(request: Request) {
       );
     }
 
-    let transcript;
-    try {
-      if (audioFile) {
-        transcript = await transcribeAudio(audioFile);
-      } else if (audioUrl) {
-        const response = await fetch(audioUrl);
-        const audioBlob = await response.blob();
-        const audioFile = new File([audioBlob], 'audio.webm', { type: 'audio/webm' });
-        transcript = await transcribeAudio(audioFile);
+    let audioBlob: Blob | null = null;
+    if (audioFile) {
+      audioBlob = audioFile;
+    } else if (audioUrl) {
+      const response = await fetch(audioUrl);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch audio: ${response.statusText}`);
       }
-    } catch (error) {
-      console.error('Error in transcription:', error);
-      return NextResponse.json(
-        { error: 'Failed to transcribe audio', success: false },
-        { status: 500 }
-      );
+      audioBlob = await response.blob();
     }
-    
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4-1106-preview",
-      messages: [
-        {
-          role: "system",
-          content: `You are a speech analysis expert. Analyze the provided transcript and provide feedback on:
-          1. Clarity and pronunciation
-          2. Pace and rhythm
-          3. Confidence and engagement
-          4. Areas for improvement
-          
-          Format your response as a valid JSON object with this exact structure:
-          {
-            "clarity": "Feedback on clarity and pronunciation",
-            "pace": "Feedback on pace and rhythm",
-            "confidence": "Feedback on confidence and engagement",
-            "improvements": "Specific areas for improvement"
-          }`
-        },
-        {
-          role: "user",
-          content: `Analyze this speech transcript: ${transcript}`
-        }
-      ],
-      temperature: 0.7,
-      max_tokens: 1000,
-      response_format: { type: "json_object" }
+
+    if (!audioBlob) {
+      throw new Error('Failed to get audio data');
+    }
+
+    // Send to Python service for analysis
+    const pythonResponse = await fetch(`${PYTHON_SERVICE_URL}/analyze-audio`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        filePath: audioUrl || URL.createObjectURL(audioBlob),
+      }),
     });
 
-    if (!completion.choices[0]?.message?.content) {
-      throw new Error('No content received from GPT-4');
+    if (!pythonResponse.ok) {
+      const errorText = await pythonResponse.text();
+      console.error("Python service error:", errorText);
+      throw new Error(`Analysis failed: ${errorText}`);
     }
 
-    const analysis = JSON.parse(completion.choices[0].message.content);
+    const analysisResult = await pythonResponse.json();
     
-    if (!analysis.clarity || !analysis.pace || !analysis.confidence || !analysis.improvements) {
-      throw new Error('Invalid analysis format received from GPT-4');
+    if (!analysisResult.success || !analysisResult.data) {
+      throw new Error("Invalid response from analysis service");
     }
+
+    const { analysis, feedback } = analysisResult.data;
 
     return NextResponse.json({
       success: true,
-      data: analysis
+      data: {
+        clarity: feedback,
+        pace: `Speech rate: ${analysis.speech_rate.toFixed(2)} syllables/sec`,
+        confidence: `Volume: ${(analysis.rms_energy * 100).toFixed(0)}%, Pitch variation: ${analysis.pitch_std.toFixed(2)}`,
+        improvements: "Practice maintaining consistent volume and pitch variation",
+        feedback: feedback,
+        duration: analysis.duration,
+        speech_rate: analysis.speech_rate,
+        rms_energy: analysis.rms_energy,
+        pitch_std: analysis.pitch_std
+      }
     });
   } catch (error) {
     console.error('Error in analyze-speech API:', error);

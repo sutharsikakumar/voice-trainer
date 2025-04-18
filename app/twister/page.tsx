@@ -276,23 +276,44 @@ export default function Twister(): JSX.Element {
       const formData = new FormData();
       formData.append("audioUrl", publicUrl);
 
-      const analysisResponse = await fetch("/api/analyze", {
+      const analysisResponse = await fetch("/api/analyze-speech", {
         method: "POST",
         body: formData,
       });
 
       if (!analysisResponse.ok) {
         const errorText = await analysisResponse.text();
+        console.error("Analysis API error:", errorText);
         throw new Error(`Analysis failed: ${errorText}`);
       }
 
       const analysisData = await analysisResponse.json();
       
       if (!analysisData.success) {
+        console.error("Analysis failed:", analysisData.error);
         throw new Error(analysisData.error || 'Failed to analyze speech');
       }
 
-      setAnalysis(analysisData.data);
+      // Format the feedback for display
+      const formattedFeedback = [
+        analysisData.data.clarity,
+        analysisData.data.pace,
+        analysisData.data.confidence,
+        analysisData.data.improvements
+      ].filter(Boolean).join('\n\n');
+
+      setAnalysis({
+        clarity: analysisData.data.clarity,
+        pace: analysisData.data.pace,
+        confidence: analysisData.data.confidence,
+        improvements: analysisData.data.improvements,
+        feedback: formattedFeedback,
+        duration: 0, // These metrics aren't available from GPT-4 analysis
+        speech_rate: 0,
+        rms_energy: 0,
+        pitch_std: 0
+      });
+
       setState((prev) => ({ ...prev, generationStatus: "ready" }));
     } catch (error) {
       console.error("Error in upload and processing:", error);
@@ -332,28 +353,25 @@ export default function Twister(): JSX.Element {
     } else if (state.generationStatus === "loading") {
       return "Analyzing your pronunciation...";
     } else if (state.generationStatus === "error") {
-      return "Sorry, we couldn't analyze your recording. Please try again.";
+      return state.error || "Sorry, we couldn't analyze your recording. Please try again.";
     } else if (state.generationStatus === "ready" && analysis) {
       return (
         <div className={styles.feedbackResults}>
           <div className={styles.feedbackText}>{analysis.feedback || "No feedback available"}</div>
           <div className={styles.analysisMetrics}>
-            <h4>Audio Metrics:</h4>
+            <h4>Feedback Details:</h4>
             <ul>
               <li>
-                <span>Duration:</span> {analysis.duration ? analysis.duration.toFixed(2) : "N/A"}s
+                <span>Clarity:</span> {analysis.feedback?.split('\n\n')[0] || "N/A"}
               </li>
               <li>
-                <span>Speech Rate:</span>{" "}
-                {analysis.speech_rate ? analysis.speech_rate.toFixed(2) : "N/A"} syllables/sec
+                <span>Pace:</span> {analysis.feedback?.split('\n\n')[1] || "N/A"}
               </li>
               <li>
-                <span>Volume:</span>{" "}
-                {analysis.rms_energy ? (analysis.rms_energy * 100).toFixed(0) : "N/A"}%
+                <span>Confidence:</span> {analysis.feedback?.split('\n\n')[2] || "N/A"}
               </li>
               <li>
-                <span>Pitch Variation:</span>{" "}
-                {analysis.pitch_std ? analysis.pitch_std.toFixed(2) : "N/A"}
+                <span>Improvements:</span> {analysis.feedback?.split('\n\n')[3] || "N/A"}
               </li>
             </ul>
           </div>
