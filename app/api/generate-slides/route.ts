@@ -6,9 +6,9 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-const TRANSCRIPTION_TIMEOUT = 30000; 
-const SLIDE_GENERATION_TIMEOUT = 45000; 
-const IMAGE_GENERATION_TIMEOUT = 20000;
+const TRANSCRIPTION_TIMEOUT = 30000; // 30 seconds
+const SLIDE_GENERATION_TIMEOUT = 45000; // 45 seconds
+const IMAGE_GENERATION_TIMEOUT = 20000; // 20 seconds
 
 interface Slide {
   title: string;
@@ -126,7 +126,7 @@ export async function POST(request: Request) {
     try {
       transcript = await timeoutPromise(
         handleTranscription(audioUrl),
-        15000, 
+        TRANSCRIPTION_TIMEOUT,
         'Transcription'
       );
     } catch (error) {
@@ -143,7 +143,7 @@ export async function POST(request: Request) {
     try {
       slidesContent = await timeoutPromise(
         generateSlides(transcript),
-        25000,
+        SLIDE_GENERATION_TIMEOUT,
         'Slide generation'
       );
 
@@ -164,7 +164,6 @@ export async function POST(request: Request) {
       );
     }
 
-
     try {
       const slidesWithImages = [];
       for (let i = 0; i < slidesContent.slides.length; i += 2) {
@@ -173,7 +172,7 @@ export async function POST(request: Request) {
           batch.map((slide: Slide, batchIndex: number) => 
             timeoutPromise(
               generateImage(slide, i + batchIndex),
-              15000,
+              IMAGE_GENERATION_TIMEOUT,
               `Image generation for slide ${i + batchIndex + 1}`
             )
           )
