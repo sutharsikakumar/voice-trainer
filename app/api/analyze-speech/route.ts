@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { transcribeAudio } from '@/utils/transcribeAudio';
 
-const PYTHON_SERVICE_URL = process.env.PYTHON_SERVICE_URL || "http://localhost:8000";
+// Ensure PYTHON_SERVICE_URL is properly set
+const PYTHON_SERVICE_URL = process.env.PYTHON_SERVICE_URL;
+if (!PYTHON_SERVICE_URL) {
+  console.error('PYTHON_SERVICE_URL environment variable is not set');
+}
 
 export async function POST(request: Request) {
   try {
@@ -33,7 +36,14 @@ export async function POST(request: Request) {
 
     // Send to Python service for analysis
     try {
+      if (!PYTHON_SERVICE_URL) {
+        throw new Error('Analysis service URL is not configured');
+      }
+
       console.log(`Attempting to connect to Python service at: ${PYTHON_SERVICE_URL}`);
+      
+      // Create a temporary URL for the audio blob
+      const tempAudioUrl = URL.createObjectURL(audioBlob);
       
       const pythonResponse = await fetch(`${PYTHON_SERVICE_URL}/analyze-audio`, {
         method: "POST",
@@ -42,9 +52,12 @@ export async function POST(request: Request) {
           "Accept": "application/json",
         },
         body: JSON.stringify({
-          filePath: audioUrl || URL.createObjectURL(audioBlob),
+          filePath: tempAudioUrl,
         }),
       });
+
+      // Clean up the temporary URL
+      URL.revokeObjectURL(tempAudioUrl);
 
       if (!pythonResponse.ok) {
         const errorText = await pythonResponse.text();
@@ -77,17 +90,36 @@ export async function POST(request: Request) {
       });
     } catch (error) {
       console.error("Python service connection error:", error);
-      // Check if it's a connection error
-      if (error instanceof Error && error.message.includes('fetch failed')) {
-        return NextResponse.json(
-          { 
-            error: "Could not connect to the analysis service. Please try again later.", 
-            success: false 
-          },
-          { status: 503 }
-        );
+      
+      // More specific error handling
+      if (error instanceof Error) {
+        if (error.message.includes('fetch failed')) {
+          return NextResponse.json(
+            { 
+              error: "Could not connect to the analysis service. Please try again later.", 
+              success: false 
+            },
+            { status: 503 }
+          );
+        }
+        if (error.message.includes('Analysis service URL is not configured')) {
+          return NextResponse.json(
+            { 
+              error: "Analysis service is not properly configured. Please contact support.", 
+              success: false 
+            },
+            { status: 500 }
+          );
+        }
       }
-      throw error; // Re-throw other errors
+      
+      return NextResponse.json(
+        { 
+          error: error instanceof Error ? error.message : 'Failed to analyze speech', 
+          success: false 
+        },
+        { status: 500 }
+      );
     }
   } catch (error) {
     console.error('Error in analyze-speech API:', error);
