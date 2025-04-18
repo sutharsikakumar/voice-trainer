@@ -7,3 +7,4 @@ Here are some screenshots, all audio recordings are stored in Supabase Bucket.
 ![App Screenshot](public/images/presenter.png)
 
 There are many things that can be improved, but this is a start.
+Twister on deployed site does not work because I do not feel like deploying python service because it is too expensive... but it works locally ahhh :)
