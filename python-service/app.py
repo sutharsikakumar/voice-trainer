@@ -51,7 +51,9 @@ async def analyze_audio(request: AudioAnalysisRequest):
         )
     
     try:
-        response = requests.get(request.filePath)
+        logger.info(f"Downloading audio from URL: {request.filePath}")
+        
+        response = requests.get(request.filePath, timeout=30)
         if response.status_code != 200:
             logger.error(f"Failed to download file from URL: {request.filePath}")
             raise HTTPException(status_code=404, detail="Failed to download audio file")
