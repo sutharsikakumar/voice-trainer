@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     }
     
     const completion = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-4-1106-preview",
       messages: [
         {
           role: "system",
@@ -62,7 +62,8 @@ export async function POST(request: Request) {
         }
       ],
       temperature: 0.7,
-      max_tokens: 1000
+      max_tokens: 1000,
+      response_format: { type: "json_object" }
     });
 
     if (!completion.choices[0]?.message?.content) {

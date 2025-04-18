@@ -6,7 +6,7 @@ const openai = new OpenAI({
 export async function generateTongueTwister(): Promise<string> {
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-4",
+      model: "gpt-4-1106-preview",
       messages: [
         {
           role: "system",
