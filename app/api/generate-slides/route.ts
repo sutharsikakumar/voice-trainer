@@ -2,17 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from 'openai';
 import { transcribeAudio } from '@/utils/transcribeAudio';
 
-// Enable Edge Runtime
 export const runtime = 'edge';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Constants for timeouts
-const TRANSCRIPTION_TIMEOUT = 30000; // 30 seconds
-const SLIDE_GENERATION_TIMEOUT = 45000; // 45 seconds
-const IMAGE_GENERATION_TIMEOUT = 20000; // 20 seconds per image
+const TRANSCRIPTION_TIMEOUT = 30000; 
+const SLIDE_GENERATION_TIMEOUT = 45000; 
+const IMAGE_GENERATION_TIMEOUT = 20000;
 
 interface Slide {
   title: string;
@@ -20,7 +18,6 @@ interface Slide {
   imageUrl?: string;
 }
 
-// Helper function to create a timeout promise
 function timeoutPromise<T>(promise: Promise<T>, ms: number, operation: string): Promise<T> {
   let timeoutId: NodeJS.Timeout;
   
@@ -36,7 +33,6 @@ function timeoutPromise<T>(promise: Promise<T>, ms: number, operation: string): 
   ]).finally(() => clearTimeout(timeoutId));
 }
 
-// Separate function for transcription
 async function handleTranscription(audioUrl: string): Promise<string> {
   const response = await fetch(audioUrl);
   if (!response.ok) {
@@ -47,7 +43,6 @@ async function handleTranscription(audioUrl: string): Promise<string> {
   return await transcribeAudio(file);
 }
 
-// Separate function for slide generation
 async function generateSlides(transcript: string) {
   const completion = await openai.chat.completions.create({
     model: "gpt-4-1106-preview",
@@ -93,7 +88,6 @@ async function generateSlides(transcript: string) {
   return JSON.parse(cleanedContent);
 }
 
-// Separate function for image generation
 async function generateImage(slide: Slide, index: number) {
   try {
     const imageResponse = await openai.images.generate({
@@ -130,12 +124,11 @@ export async function POST(request: Request) {
       );
     }
 
-    // Step 1: Transcribe with timeout
     let transcript: string;
     try {
       transcript = await timeoutPromise(
         handleTranscription(audioUrl),
-        15000, // 15 second timeout
+        15000, 
         'Transcription'
       );
     } catch (error) {
@@ -148,12 +141,11 @@ export async function POST(request: Request) {
       );
     }
 
-    // Step 2: Generate slides with timeout
     let slidesContent;
     try {
       slidesContent = await timeoutPromise(
         generateSlides(transcript),
-        25000, // 25 second timeout
+        25000,
         'Slide generation'
       );
 
@@ -174,9 +166,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Step 3: Generate images with individual timeouts
+
     try {
-      // Process images in batches of 2 to avoid timeout
       const slidesWithImages = [];
       for (let i = 0; i < slidesContent.slides.length; i += 2) {
         const batch = slidesContent.slides.slice(i, i + 2);
@@ -184,7 +175,7 @@ export async function POST(request: Request) {
           batch.map((slide: Slide, batchIndex: number) => 
             timeoutPromise(
               generateImage(slide, i + batchIndex),
-              15000, // 15 second timeout per image
+              15000,
               `Image generation for slide ${i + batchIndex + 1}`
             )
           )
@@ -200,7 +191,6 @@ export async function POST(request: Request) {
         }
       });
     } catch (error) {
-      // If image generation fails, return slides without images
       return NextResponse.json({
         success: true,
         data: {

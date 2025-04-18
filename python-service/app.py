@@ -72,7 +72,15 @@ async def analyze_audio(request: AudioAnalysisRequest):
                 raise HTTPException(status_code=500, detail=f"Audio conversion failed: {e.stderr.decode()}")
             
             try:
-                y, sr = librosa.load(wav_path, sr=None)
+                # Load audio with specific parameters for speech analysis
+                y, sr = librosa.load(wav_path, sr=16000, mono=True)
+                
+                # Normalize audio
+                y = librosa.util.normalize(y)
+                
+                # Remove silence
+                y, _ = librosa.effects.trim(y, top_db=30)
+                
             except Exception as e:
                 logger.error(f"Librosa error: {str(e)}")
                 raise HTTPException(status_code=500, detail=f"Failed to load audio file: {str(e)}")
@@ -117,6 +125,11 @@ def analyze_audio_data(y, sr):
         spectral_centroid = np.mean(librosa.feature.spectral_centroid(y=y, sr=sr)[0])
         spectral_bandwidth = np.mean(librosa.feature.spectral_bandwidth(y=y, sr=sr)[0])
         
+        zcr = np.mean(librosa.feature.zero_crossing_rate(y=y)[0])
+        
+        mfccs = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=13)
+        mfcc_mean = np.mean(mfccs, axis=1)
+        
         return {
             "duration": float(duration),
             "tempo": float(tempo),
@@ -125,7 +138,9 @@ def analyze_audio_data(y, sr):
             "speech_rate": float(speech_rate),
             "rms_energy": float(rms_energy),
             "spectral_centroid": float(spectral_centroid),
-            "spectral_bandwidth": float(spectral_bandwidth)
+            "spectral_bandwidth": float(spectral_bandwidth),
+            "zero_crossing_rate": float(zcr),
+            "mfcc_mean": [float(x) for x in mfcc_mean]
         }
     except Exception as e:
         logger.error(f"Error in audio analysis: {str(e)}")
@@ -156,6 +171,11 @@ def generate_feedback(analysis, tongue_twister=""):
         feedback.append("Try varying your pitch more to make your speech more engaging.")
     elif analysis["pitch_std"] > 40:
         feedback.append("You have good vocal expressiveness!")
+    
+    if analysis["zero_crossing_rate"] < 0.1:
+        feedback.append("Try to enunciate more clearly.")
+    elif analysis["zero_crossing_rate"] > 0.3:
+        feedback.append("Good clarity in your speech!")
     
     return " ".join(feedback)
 

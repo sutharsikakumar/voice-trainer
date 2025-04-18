@@ -1,20 +1,16 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Enable static optimization where possible
   reactStrictMode: true,
   
-  // Configure image domains for next/image
   images: {
     domains: ['sdigjxcgoqclmssnmtwi.supabase.co'],
   },
   
-  // Configure redirects if needed
   async redirects() {
     return [];
   },
   
-  // Configure headers for security
   async headers() {
     return [
       {
