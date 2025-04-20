@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 
-// Ensure PYTHON_SERVICE_URL is properly set
 const PYTHON_SERVICE_URL = process.env.PYTHON_SERVICE_URL;
 if (!PYTHON_SERVICE_URL) {
   console.error('PYTHON_SERVICE_URL environment variable is not set');
@@ -34,7 +33,6 @@ export async function POST(request: Request) {
       throw new Error('Failed to get audio data');
     }
 
-    // Send to Python service for analysis
     try {
       if (!PYTHON_SERVICE_URL) {
         throw new Error('Analysis service URL is not configured');
@@ -42,7 +40,6 @@ export async function POST(request: Request) {
 
       console.log(`Attempting to connect to Python service at: ${PYTHON_SERVICE_URL}`);
       
-      // Create a temporary URL for the audio blob
       const tempAudioUrl = URL.createObjectURL(audioBlob);
       
       const pythonResponse = await fetch(`${PYTHON_SERVICE_URL}/analyze-audio`, {
@@ -56,7 +53,6 @@ export async function POST(request: Request) {
         }),
       });
 
-      // Clean up the temporary URL
       URL.revokeObjectURL(tempAudioUrl);
 
       if (!pythonResponse.ok) {
@@ -91,7 +87,6 @@ export async function POST(request: Request) {
     } catch (error) {
       console.error("Python service connection error:", error);
       
-      // More specific error handling
       if (error instanceof Error) {
         if (error.message.includes('fetch failed')) {
           return NextResponse.json(
